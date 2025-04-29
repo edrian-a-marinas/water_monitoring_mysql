@@ -8,8 +8,8 @@ import time
 
 
 # Replace with your Wi-Fi credentials
-ssid = 'Hisense2G' #wifi name   #Hisense2G #Ed
-password = 'hershey2024' #wifi pass #hershey2024 #Edrian27
+ssid = 'EdrianAldrin' #wifi name  
+password = 'Edrian_Programmer27' #wifi pass 
 
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
@@ -25,7 +25,7 @@ print('Connected to Wi-Fi')
 print('IP address:', wlan.ifconfig()[0])  
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_address = ('192.168.4.252', 5000)  # Replace IP Address of laptop  #192.168.4.252 (home wifi) , #192.168.189.209 (Phone data hotspot)
+server_address = ('192.168.?.???', 5000)  # Replace IP Address of laptop  ??? cause you need your own ip
 
 print(f"Connecting to {server_address}...")
 sock.connect(server_address)
@@ -147,8 +147,8 @@ def pico_w_run():
         else:
             print("TEMP: Sensor Error")
 
-        print(f"Distance: {water_distance} cm")
-        print(f"LEVEL: {water_level_status}")
+        #print(f"Distance: {water_distance} cm")
+        #print(f"LEVEL: {water_level_status}")
  
  
         time.sleep(0.1)    

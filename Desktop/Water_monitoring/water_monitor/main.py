@@ -9,7 +9,7 @@ import matplotlib.dates as mdates
 
 # Create TCP/IP socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('192.168.4.252', 5000)) #laptop IP  #192.168.4.252(home wifi) #192.168.189.209(mobile hotspot)
+server_socket.bind(('192.168.?.???', 5000)) #Your laptop/PC IP 
 server_socket.listen(1)
 print("Waiting for connection...")
 
@@ -134,14 +134,13 @@ def update_display():
         add_to_log(log_msg)
 
         # Update Graph data
-        # Update Graph data
         now = datetime.now()
         if water_level in level_mapping:
             graph_times.append(now)
             graph_levels.append(level_mapping[water_level])
-        else:  # If Unknown or Empty
+        else:  
             graph_times.append(now)
-            graph_levels.append(-1)  # special flag for red dot at Low position
+            graph_levels.append(-1) 
 
         if len(graph_times) > 20:
             graph_times.pop(0)
@@ -210,11 +209,11 @@ def open_graph_window():
             else:
                 error_times.append(graph_times[i])
 
-        # Plot normal data
+   
         if normal_times:
             ax.plot(normal_times, normal_levels, marker='o', linestyle='-', color='blue', label='Normal')
 
-        # Plot error data
+      
         if error_times:
             ax.scatter(error_times, [0]*len(error_times), color='red', s=80, label='Unknown/Empty')
 
@@ -239,7 +238,7 @@ def open_graph_window():
 
 root = tk.Tk()
 root.title("Water Tank Level Monitor")
-root.geometry("450x300") #Y and X = left-right and up-down #from x300
+root.geometry("450x300")
 
 monitoring_active = [False]
 

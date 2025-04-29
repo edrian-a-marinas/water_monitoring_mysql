@@ -20,4 +20,4 @@ Softwares: Xampp, Git Bash, VSCode, Thonny, cmd.
 
 
 
-
+Note: In the main.py and sensors.py files, you should adjust the functions categorize_water_level, read_distance, and read_temperature depending on the specific setup or hardware you're using, as these functions may need to be modified to suit your environment or sensor configuration.

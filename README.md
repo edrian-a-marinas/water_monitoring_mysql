@@ -19,5 +19,5 @@ Database: mySQL, Xampp, http://localhost/phpmyadmin/
 Softwares: Xampp, Git Bash, VSCode, Thonny, cmd.
 
 
-
 Note: In the main.py and sensors.py files, you should adjust the functions categorize_water_level, read_distance, and read_temperature depending on the specific setup or hardware you're using, as these functions may need to be modified to suit your environment or sensor configuration.
+Note: This is a simple system developed for a school project. However, I have some suggestions for possible upgrades: automated water shutoff when a danger level is detected, automatic water refill when the level is low, automatic water heating when the temperature is too cold, automatic cooling when it's too hot, and other potential features.

@@ -7,9 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.dates as mdates
 
-
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('192.???.?.???', 5000)) #Your laptop/pc ip 
+server_socket.bind(('0.0.0.0', 5000)) #if laptop wifi  #192.168.4.252, if ed wifi #0.0.0.0(Ed hotspot)
 server_socket.listen(1)
 print("Waiting for connection...")
 
@@ -20,39 +19,34 @@ print("NOW RUNNING!!! ")
 
 
 log_entries = []
-log_window = None
-log_listbox = None
-graph_window = None
 sensor_data = {'temperature': None, 'water_level': None, 'water_distance': None}
-
-# Graph data storage
 graph_times = []
 graph_levels = []
-level_mapping = {
-    'Low': 0,
-    'High': 1,
-    'Danger': 2
-}
+graph_temps = []
 
+level_mapping = {'Low': 0, 'High': 1, 'Danger': 2}
+temp_mapping = {'Cold': 0, 'Normal': 1, 'Hot': 2}
+
+monitoring_active = [False]
+view_active = [False]
+
+# Log handling
 def add_to_log(message):
-    separator = "-" * 200
+    separator = "-" * 250
     log_entries.insert(0, separator)
     log_entries.insert(0, message)
+    if log_listbox.winfo_ismapped():
+        log_listbox.delete(0, tk.END)
+        for entry in log_entries:
+            log_listbox.insert(tk.END, entry)
 
-    if log_listbox is not None and log_listbox.winfo_exists():
-        log_listbox.insert(0, separator)
-        log_listbox.insert(0, message)
-        log_listbox.see(0)
- 
-
+# Socket reading
 def read_socket_data():
     try:
-        data = connection.recv(1024).decode('utf-8').strip()  # Receive data from sensor.py
+        data = connection.recv(1024).decode('utf-8').strip()
         if data:
-
             print(f"Received data: {data}")
             parts = data.split(" ")
-            #print(parts)
             temperature = None
             water_level = None
             water_distance = None
@@ -71,20 +65,15 @@ def read_socket_data():
                     elif "Very" in raw_level:
                         water_level = "Very Low"
                     else:
-                        water_level = "Unknown"    
-                        
+                        water_level = "Unknown"
                 elif part.startswith("DISTANCE:"):
                     water_distance = float(part.split(":")[1])
 
             sensor_data['temperature'] = temperature
             sensor_data['water_level'] = water_level
-            sensor_data['water_distance'] = water_distance        
-
+            sensor_data['water_distance'] = water_distance
             return True
-        print(f"didnt Received data from sensor.py")
         return False
-        
-        
     except Exception as e:
         print("Socket read error:", e)
         return False
@@ -95,16 +84,15 @@ def socket_thread():
 
 threading.Thread(target=socket_thread, daemon=True).start()
 
-
-def update_display():   
+# GUI Update
+def update_display():
     if monitoring_active[0]:
         temperature = sensor_data['temperature']
         water_level = sensor_data['water_level']
         water_distance = sensor_data['water_distance']
 
         if temperature is None or water_level is None:
-            print("Sensor read error: Missing data")
-            root.after(3000, update_display)  # Try again in 3 seconds
+            root.after(2500, update_display)
             return
 
         water_level_label.config(text=f"Water Level: {water_level}")
@@ -112,134 +100,116 @@ def update_display():
 
         timestamp = datetime.now().strftime("%I:%M:%S %p")
         log_msg = f"[{timestamp}] || Water Level: {water_level} --- Temperature: {temperature} °C"
-
         warnings = []
+
+        if temperature > 40.0:
+            temp_category = 'Hot'
+            warnings.append("HOT Temperature")
+            graph_temps.append(2)
+        elif temperature < 17.0:
+            temp_category = 'Cold'
+            warnings.append("COLD Temperature")
+            graph_temps.append(0)
+        else:
+            temp_category = 'Normal'
+            graph_temps.append(1)
 
         if water_distance > 0.5 and water_distance <= 7.0:  
             warnings.append("Water DANGER Level")
 
-        #elif water_distance > 3 and water_distance <= 4.00:  
-            #warnings.append("Water High Level")
-
-        if temperature > 40.0:
-            warnings.append("HOT Temperature")
-
-        elif temperature < 17.0:
-            warnings.append("COLD Temperature")
+        insert_data(water_level, water_distance, temperature, warnings)
 
         if warnings:
             log_msg += " --- WARNING: " + " --and-- ".join(warnings)
 
-        insert_data(water_level, water_distance, temperature, warnings) 
         add_to_log(log_msg)
 
         now = datetime.now()
+        graph_times.append(now)
+
         if water_level in level_mapping:
-            graph_times.append(now)
             graph_levels.append(level_mapping[water_level])
-        else:  # If Unknown or Empty
-            graph_times.append(now)
-            graph_levels.append(-1)  # special flag for red dot at Low position
+        else:
+            graph_levels.append(-1)  # Very Low/Unknown
 
         if len(graph_times) > 20:
             graph_times.pop(0)
             graph_levels.pop(0)
+            graph_temps.pop(0)
 
-        root.after(2500, update_display)  # Schedule the next update in 2.5 seconds 
+        update_graphs()
+    root.after(2500, update_display)
 
+# Start/Stop Monitoring
 def toggle_monitoring():
     monitoring_active[0] = not monitoring_active[0]
     if monitoring_active[0]:
         start_button.config(text="Stop Monitoring")
-        threading.Thread(target=update_display, daemon=True).start()
+        update_display()
     else:
         start_button.config(text="Start Monitoring")
         water_level_label.config(text="Water Level: --")
         temperature_label.config(text="Temperature: --")
 
+# View/Hide Logs and Graphs
+def toggle_view():
+    view_active[0] = not view_active[0]
+    if view_active[0]:
+        toggle_view_button.config(text="Stop View Logs and Graphs")
+        graphs_frame.pack(side="top", fill="both", expand=True)
+        logs_frame.pack(side="bottom", fill="x")
+        root.geometry("1200x680")
+    else:
+        toggle_view_button.config(text="View Logs and Graphs")
+        graphs_frame.pack_forget()
+        logs_frame.pack_forget()
+        root.geometry("450x300")
 
-def close_log_window():
-    global log_window, log_listbox
-    log_window.destroy()
-    log_window = None
-    log_listbox = None
+# Graphs update
+def update_graphs():
+    ax1.clear()
+    ax2.clear()
 
-def open_log_window():
-    global log_window, log_listbox
-    if log_window is not None and log_window.winfo_exists():
-        return
+    normal_times = []
+    normal_levels = []
+    error_times = []
 
-    log_window = tk.Toplevel(root)
-    log_window.title("Logs")
-    log_window.geometry("900x400")
-    log_window.protocol("WM_DELETE_WINDOW", close_log_window)
+    for i, level in enumerate(graph_levels):
+        if level != -1:
+            normal_times.append(graph_times[i])
+            normal_levels.append(level)
+        else:
+            error_times.append(graph_times[i])
 
-    log_listbox = tk.Listbox(log_window, font=("Arial", 12), width=100, height=20)
-    log_listbox.pack(pady=10)
+    if normal_times:
+        ax1.plot(normal_times, normal_levels, marker='o', linestyle='-', color='blue', label='Normal')
 
-    for entry in log_entries:
-        log_listbox.insert(tk.END, entry)
+    if error_times:
+        ax1.scatter(error_times, [0]*len(error_times), color='red', s=80, label='Very Low/Empty')
 
-def open_graph_window():
-    global graph_window, canvas, fig, ax
-    if graph_window is not None and graph_window.winfo_exists():
-        return
+    ax1.set_yticks([0, 1, 2])
+    ax1.set_yticklabels(['Low', 'High', 'Danger'])
+    ax1.set_title("Water Level")
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    ax1.grid(True)
+    ax1.legend()
 
-    graph_window = tk.Toplevel(root)
-    graph_window.title("Water Level Graph")
+    valid_temp_times = graph_times[:len(graph_temps)]
+    ax2.plot(valid_temp_times, graph_temps, marker='x', linestyle='-', color='orange', label='Temperature')
+    ax2.set_yticks([0, 1, 2])
+    ax2.set_yticklabels(['Cold', 'Normal', 'Hot'])
+    ax2.set_title("Temperature")
+    ax2.set_xlabel("Time")
+    ax2.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+    ax2.grid(True)
+    ax2.legend()
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    canvas = FigureCanvasTkAgg(fig, master=graph_window)
-    canvas_widget = canvas.get_tk_widget()
-    canvas_widget.pack()
-
-    def update_graph():
-        ax.clear()
-
-        # Separate normal and unknown/empty data points
-        normal_times = []
-        normal_levels = []
-        error_times = []
-
-        for i, level in enumerate(graph_levels):
-            if level != -1:
-                normal_times.append(graph_times[i])
-                normal_levels.append(level)
-            else:
-                error_times.append(graph_times[i])
-
-        # Plot normal data
-        if normal_times:
-            ax.plot(normal_times, normal_levels, marker='o', linestyle='-', color='blue', label='Normal')
-
-        # Plot error data
-        if error_times:
-            ax.scatter(error_times, [0]*len(error_times), color='red', s=80, label='Unknown/Empty')
-
-        ax.set_yticks([0, 1, 2])
-        ax.set_yticklabels(['Low', 'High', 'Danger'])
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Water Level")
-        ax.set_title("Water Level Over Time")
-        ax.grid(True)
-
-        # Match x-axis time format to 2.5s update
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-
-        ax.legend()
-        fig.autofmt_xdate(rotation=45)
-        canvas.draw()
-
-        graph_window.after(2500, update_graph)
-
-    update_graph()
-
+    fig.tight_layout()
+    canvas.draw()
 
 root = tk.Tk()
 root.title("Water Tank Level Monitor")
-root.geometry("450x300") #Y and X = left-right and up-down #from x300
-
-monitoring_active = [False]
+root.geometry("450x300")
 
 water_level_label = tk.Label(root, text="Water Level: --", font=("Arial", 16), width=30)
 water_level_label.pack(pady=10)
@@ -250,10 +220,16 @@ temperature_label.pack(pady=10)
 start_button = tk.Button(root, text="Start Monitoring", font=("Arial", 14), command=toggle_monitoring)
 start_button.pack(pady=10)
 
-log_button = tk.Button(root, text="View Logs", font=("Arial", 12), command=open_log_window)
-log_button.pack(pady=5)
+toggle_view_button = tk.Button(root, text="View Logs and Graphs", font=("Arial", 12), command=toggle_view)
+toggle_view_button.pack(pady=10)
 
-graph_button = tk.Button(root, text="View Graph", font=("Arial", 12), command=open_graph_window)
-graph_button.pack(pady=5)
+graphs_frame = tk.Frame(root)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.5, 2.8))
+canvas = FigureCanvasTkAgg(fig, master=graphs_frame)
+canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+
+logs_frame = tk.Frame(root)
+log_listbox = tk.Listbox(logs_frame, font=("Arial", 11), height=8, width=200)
+log_listbox.pack(pady=10, padx=5, fill="both", expand=True)
 
 root.mainloop()

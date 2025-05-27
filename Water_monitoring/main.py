@@ -6,14 +6,18 @@ import threading
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.dates as mdates
+import time
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.bind(('0.0.0.0', 5000)) #if laptop wifi  #192.168.4.252, if ed wifi #0.0.0.0(Ed hotspot)
+server_socket.bind(('192.168.4.252', 5000)) #if laptop wifi  #192.168.4.252, if ed wifi #0.0.0.0(Ed hotspot)
 server_socket.listen(1)
 print("Waiting for connection...")
 
 connection, client_address = server_socket.accept()
+connection.settimeout(5)
+
 print("Connected to", client_address)
+
 
 print("NOW RUNNING!!! ")
 
@@ -30,7 +34,7 @@ temp_mapping = {'Cold': 0, 'Normal': 1, 'Hot': 2}
 monitoring_active = [False]
 view_active = [False]
 
-# Log handling
+
 def add_to_log(message):
     separator = "-" * 250
     log_entries.insert(0, separator)
@@ -40,10 +44,13 @@ def add_to_log(message):
         for entry in log_entries:
             log_listbox.insert(tk.END, entry)
 
-# Socket reading
 def read_socket_data():
     try:
-        data = connection.recv(1024).decode('utf-8').strip()
+        data = connection.recv(256).decode('utf-8').strip()
+        if not data:
+            print("Received empty data. Client might have disconnected.")
+            return False
+        
         if data:
             print(f"Received data: {data}")
             parts = data.split(" ")
@@ -80,9 +87,13 @@ def read_socket_data():
 
 def socket_thread():
     while True:
-        read_socket_data()
+        alive = read_socket_data()
+        if not alive:
+            time.sleep(1)  # wait before trying again
+        else:
+            time.sleep(0.1)
 
-threading.Thread(target=socket_thread, daemon=True).start()
+threading.Thread(target=socket_thread, daemon=True).start()            
 
 # GUI Update
 def update_display():
@@ -102,11 +113,11 @@ def update_display():
         log_msg = f"[{timestamp}] || Water Level: {water_level} --- Temperature: {temperature} °C"
         warnings = []
 
-        if temperature > 40.0:
+        if temperature > 35.0:
             temp_category = 'Hot'
             warnings.append("HOT Temperature")
             graph_temps.append(2)
-        elif temperature < 17.0:
+        elif temperature < 20.0:
             temp_category = 'Cold'
             warnings.append("COLD Temperature")
             graph_temps.append(0)

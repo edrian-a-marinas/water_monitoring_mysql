@@ -5,6 +5,7 @@ import network
 import time
 
 #Rasberry pi pico w.
+#remove the comments for debugging
 
 
 # Replace with your Wi-Fi credentials
@@ -26,6 +27,7 @@ print('IP address:', wlan.ifconfig()[0])
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_address = ('192.???.?.???', 5000)  # Replace IP Address of your laptop/pc wifi 
+
 
 print(f"Connecting to {server_address}...")
 sock.connect(server_address)
@@ -93,7 +95,7 @@ def read_distance():
             time.sleep(0.01)
 
         except Exception as e:
-            pass      
+            pass
 
     if (x + 1 - k) == 0:
         return -1 
@@ -107,19 +109,18 @@ def categorize_water_level(distance):
     if distance == -1:
         return "Unknown"
     
-    elif distance >= 1.0 and distance <= 7.0:  
+    elif distance >= 0.5 and distance <= 7.0:  
         return "Danger Level"
     
     elif distance > 7.0 and distance <= 19.5:
         return "High Level"
 
     elif distance > 19.5 and distance < 25.00:  
-        return "Low Water"
+        return "Low Level"
     
     else:
-        return "Empty" 
+        return "Very Low" 
     
-
 
 def send_data_to_pc(temperature, water_level, water_distance):
     try:
@@ -130,15 +131,16 @@ def send_data_to_pc(temperature, water_level, water_distance):
         print(f"Error in sending data: {e}")
 
 def pico_w_run():
+    tankHeight = 25
     while True:
         temp = read_temperature()
-       # print(f"done reading temp")
+        #print(f"done reading temp")
         water_distance = read_distance()
         #print(f"done distance cm")
         water_level_status = categorize_water_level(water_distance)
         #print(f"done status")
         send_data_to_pc(temp, water_level_status, water_distance)
-        #print(f"dont sent to pc")
+        #print(f"done sent to pc")
         
 
         if temp is not None:
@@ -148,11 +150,20 @@ def pico_w_run():
         else:
             print("TEMP: Sensor Error")
 
-        print(f"Distance: {water_distance} cm")
-        print(f"LEVEL: {water_level_status}")
+        if water_distance != -1:
+            water_height = round(tankHeight - water_distance, 2)  # 25 cm is total tank height
+            #print(f"Water Height: {water_height} cm (Tank Height: 25 cm - Distance: {water_distance} cm)")
+        else:
+            #print("Water Height: Unknown (Sensor Error or Timeout)")    
+
+        #print(f"Distance: {water_distance} cm")
+        #print(f"LEVEL: {water_level_status}")
+        #print(f"Temp: {temp}")
  
  
         time.sleep(0.1)    
 pico_w_run()
+
+
 
 

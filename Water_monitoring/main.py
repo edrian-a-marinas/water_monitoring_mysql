@@ -7,12 +7,13 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.dates as mdates
 import time
+import json
 
 log_entries = []
 sensor_data = {'temperature': None, 'water_level': None, 'water_distance': None}
 graph_times = []
 graph_levels = []
-graph_temps = []
+graph_temps = []   
 connection = None
 connection_established = False
 
@@ -23,16 +24,10 @@ monitoring_active = [False]
 view_active = [False]
 
 
-def main():
-    threading.Thread(target=wait_for_connection, daemon=True).start()
-    update_display()
-    root.mainloop()
-
-
 def wait_for_connection():
     global connection, connection_established
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('0.0.0.0', 5000)) #put your actual IP address instead of '0.0.0.0' to limit connections; '0.0.0.0' accept connections from any network;
+    server_socket.bind(('0.0.0.0', 5001)) #put your actual IP address instead of '0.0.0.0' to limit connections; '0.0.0.0' accept connections from any network;
     server_socket.listen(1)
     update_status_label("Waiting for connection...")
     print("Waiting for connection...")
@@ -82,33 +77,57 @@ def add_to_log(message):
 
 def data_received(data):
     print(f"Received data: {data}")
-    parts = data.split(" ")
-    temperature = None
-    water_level = None
-    water_distance = None
 
-    for part in parts:
-        if part.startswith("TEMP:"):
-            temperature = float(part.split(":")[1])
-        elif part.startswith("LEVEL:"):
-            raw_level = part.split(":")[1]
+
+    # try JSON first
+    try:
+        obj = json.loads(data)
+        # Accept both numeric and string values inside JSON
+        if 'temperature' in obj:
+            # temperature might be string or number
+            try:
+                temperature = float(obj['temperature'])
+            except Exception:
+                # if it's like "85.00" or non-convertible, ignore
+                try:
+                    temperature = float(str(obj['temperature']))
+                except Exception:
+                    temperature = None
+        # water_distance may be provided under "water_distance_in_CM" or "water_distance"
+        if 'water_distance_in_CM' in obj:
+            try:
+                water_distance = float(obj['water_distance_in_CM'])
+            except Exception:
+                try:
+                    water_distance = float(str(obj['water_distance_in_CM']))
+                except Exception:
+                    water_distance = None
+        elif 'water_distance' in obj:
+            try:
+                water_distance = float(obj['water_distance'])
+            except Exception:
+                try:
+                    water_distance = float(str(obj['water_distance']))
+                except Exception:
+                    water_distance = None
+
+        # level may be provided under "water_level_status" or "water_level"
+        if 'water_level_status' in obj:
+            raw_level = obj['water_level_status']
+            raw_level = raw_level if isinstance(raw_level, str) else str(raw_level)
             if "Danger" in raw_level:
                 water_level = "Danger"
             elif "High" in raw_level:
                 water_level = "High"
-            elif "Low" in raw_level:
+            elif "Low" in raw_level and "Very" not in raw_level:
                 water_level = "Low"
             elif "Very" in raw_level:
                 water_level = "Very Low"
             else:
-                water_level = "Unknown"
-        elif part.startswith("DISTANCE:"):
-            water_distance = float(part.split(":")[1])
-
-    sensor_data['temperature'] = temperature
-    sensor_data['water_level'] = water_level
-    sensor_data['water_distance'] = water_distance
-    return True
+                water_level = raw_level
+    except Exception as err:
+        print(err)
+        
 
 
 def update_display():
@@ -272,5 +291,12 @@ logs_frame = tk.Frame(root)
 log_listbox = tk.Listbox(logs_frame, font=("Arial", 11), height=8, width=200)
 log_listbox.pack(pady=10, padx=5, fill="both", expand=True)
 
+
+def main():
+    threading.Thread(target=wait_for_connection, daemon=True).start()
+    update_display()
+    root.mainloop()
+
 if __name__ == "__main__":
     main()
+

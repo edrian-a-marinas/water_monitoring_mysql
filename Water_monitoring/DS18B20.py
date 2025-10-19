@@ -1,7 +1,7 @@
 import machine
 import onewire, ds18x20
 import time
-import picoData
+import main
 
 
 #DS18B20
@@ -29,28 +29,22 @@ def init():
 # -------- Core Logic -------#
 # ---------------------------#
 
+
 def read_data(sensor):
-    try:
-        if sensor is None:
-            return None
-
-        ds_sensor, roms = sensor
-
-        ds_sensor.convert_temp()
-        time.sleep_ms(750)
-
-        for rom in roms:
-            temperature = ds_sensor.read_temp(rom)
-            if temperature is not None:
-                return {
-                    "temperature": temperature
-                }
-
+    
+    ds_sensor, roms = sensor
+    
+    if not roms:
         return None
-
-    except Exception as e:
-        print("DS18B20 read error:", e)
-        return None
+    ds_sensor.convert_temp()
+    time.sleep_ms(750)
+    for rom in roms:
+        temp_c = ds_sensor.read_temp(rom)
+        if temp_c is not None:
+            return {
+                "temperature": temp_c    
+            }
+    return None
 
 
 
@@ -71,11 +65,13 @@ def printDevices(ds18b20_devices):
 
 
 if __name__ == '__main__':
+    time.sleep(3)
     ds18b20_devices = scan()
     printDevices(ds18b20_devices)
     ds = init()
 
     while True:
-      data = picoData.DS18B20_OUTPUT(ds)
+      data = main.DS18B20_OUTPUT(ds)
       print(data)      
       time.sleep(2)
+

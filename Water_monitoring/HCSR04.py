@@ -1,8 +1,8 @@
 import machine
 import time
-import picoData
+import main
 
-#HCSR04
+
 # ---------------------------#
 # -------- Initialize -------#
 # ---------------------------#
@@ -100,6 +100,7 @@ if __name__ == '__main__':
     hcsr = init()
 
     while True:
-        data = picoData.HCSR04_OUTPUT(hcsr)
+        data = main.HCSR04_OUTPUT(hcsr)
         print(data)
         time.sleep(2)
+

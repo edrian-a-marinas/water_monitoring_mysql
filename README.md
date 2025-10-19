@@ -143,6 +143,32 @@ Data is saved automatically to MySQL.
 
 When you click Stop Monitoring, data collection and logging pause.
 
+⚙️ Optional: Enable Debugging Output
+
+If you want to see live logs in Thonny or the Pico console,
+you can uncomment the print() lines inside these files:
+
+main.py → shows Wi-Fi connection status, JSON payloads, and sensor output
+
+HCSR04.py and DS18B20.py → show raw distance and temperature readings . just run this files alone
+
+Example:
+
+#print("Connecting to Wi-Fi...")
+
+⬇️ change to:
+
+print("Connecting to Wi-Fi...")
+
+This helps you confirm that:
+
+Wi-Fi successfully connects
+
+Sensors are returning valid data
+
+JSON packets are being sent to your computer
+
+After testing, it’s recommended to re-comment them to avoid performance issues during continuous operation.
 
 📚 Technologies Used
 

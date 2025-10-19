@@ -143,11 +143,6 @@ Data is saved automatically to MySQL.
 
 When you click Stop Monitoring, data collection and logging pause.
 
-🖼️ Preview (Optional)
-
-You can add a screenshot of your GUI here later, for example:
-
-![Water Monitoring GUI](screenshot.png)
 
 📚 Technologies Used
 

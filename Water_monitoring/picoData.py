@@ -6,7 +6,7 @@ import socket, network, time, json
 
 SSID = 'ed' #Your wifi name   
 PASSWORD = 'edrian127' #Your Wifi password
-SERVER_ADDRESS = '192.168.4.200', 5000 # Replace IP Address of your laptop/pc wifi 
+SERVER_ADDRESS = '192.168.?.???', 5000 # Replace IP Address of your laptop/pc wifi 
 
 
 
